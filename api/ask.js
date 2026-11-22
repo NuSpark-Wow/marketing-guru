@@ -23,6 +23,12 @@ const BREAK = {
   answer: [{ heading: "", text: "You've asked a lot of great questions this hour. Take a short break, download your conversation if you like, and come back soon." }]
 };
 
+const AUDIENCE = {
+  b2b: `AUDIENCE: the learner markets to OTHER BUSINESSES (B2B). Use B2B language: accounts, buying committees, decision makers, leads, pipeline, sales teams, demos, longer sales cycles. Examples should be B2B companies (software, manufacturing, professional services). For TV and radio, explain how B2B brands use them (CTV targeting by business audiences, awareness that warms up sales outreach).`,
+  b2c: `AUDIENCE: the learner markets to CONSUMERS (B2C). Use consumer language: customers, shoppers, households, fans, offers, sign-ups, store visits, sales, loyalty, repeat customers, word of mouth. Do NOT use B2B jargon like pipeline, SQL, MQL, buying committee, accounts or ABM. For sales topics, talk about the front line: sales associates, customer service, and turning a shopper into a customer. In "bottom_line", "c_level" is for business owners and "sales" is for the front line (sales associates and customer service). Examples should be consumer businesses (restaurants, retailers, gyms, home services, consumer apps).`,
+  both: `AUDIENCE: general. Use plain business language that fits any business. Where B2B and B2C really differ, add one short line on how each would do it. Some channels lean one way (TV and radio lean consumer; GTM outbound, intent and lead scoring lean B2B): frame those for the side they mainly serve first.`
+};
+
 const DEPTH = {
   quick: `LENGTH: QUICK LESSON. 150-200 words total, as exactly 3 sections: "The short answer" plus two more. Each section is 2-4 sentences.`,
   full: `LENGTH: FULL LESSON. 330-450 words total, as 4-5 sections. Each section is one focused paragraph.`
@@ -350,6 +356,7 @@ module.exports = async (req, res) => {
   const part = src.part === "board" ? "board" : "briefing";
   const question = String(src.q || src.question || "").trim().slice(0, 300);
   const depth = src.depth === "full" ? "full" : "quick";
+  const aud = ["b2b", "b2c", "both"].includes(src.aud) ? src.aud : "both";
   const context = isGet ? "" : String(src.context || "").slice(0, 200);
   const more = !isGet && src.more === true;
   const prev = isGet ? "" : String(src.prev || "").slice(0, 3000);
@@ -367,9 +374,9 @@ module.exports = async (req, res) => {
     recent.push(now); hits.set(ip, recent);
   }
 
-  let user = `${DEPTH[depth]}\n\n${context ? `We were just discussing: ${context}\n` : ""}Question: ${question}`;
+  let user = `${AUDIENCE[aud]}\n${DEPTH[depth]}\n\n${context ? `We were just discussing: ${context}\n` : ""}Question: ${question}`;
   if (more) {
-    user = `${DEPTH[depth]}\n\nThe learner tapped "Go deeper" on: ${context}\nHere is what was ALREADY covered:\n${prev}\n\nGo one level deeper on this same topic: how it works under the hood, why it matters, and where businesses go wrong. Do not repeat what was already said. Title it like "Deeper: ...".${/^go deeper on /i.test(question) ? "" : `\nThey specifically want to dig into: ${question}`}`;
+    user = `${AUDIENCE[aud]}\n${DEPTH[depth]}\n\nThe learner tapped "Go deeper" on: ${context}\nHere is what was ALREADY covered:\n${prev}\n\nGo one level deeper on this same topic: how it works under the hood, why it matters, and where businesses go wrong. Do not repeat what was already said. Title it like "Deeper: ...".${/^go deeper on /i.test(question) ? "" : `\nThey specifically want to dig into: ${question}`}`;
   }
 
   if (part === "board") {
@@ -419,3 +426,4 @@ function blockRequest(res) {
   res.setHeader("content-type", "application/json");
   res.end(JSON.stringify({ error: "not_allowed", message: "This tool only works on NuSpark websites." }));
 }
+
