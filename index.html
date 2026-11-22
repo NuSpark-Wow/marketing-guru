@@ -154,6 +154,8 @@ button{font-family:inherit;cursor:pointer}
   .mic{width:56px;height:56px;font-size:24px}
   .go{width:100%;height:52px}
 }
+.aud{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:12px;padding:10px 14px;margin:0 0 12px}
+.audlab{font-weight:800;font-size:16px;color:var(--ink)}
 .top-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .toggle small{display:block;font-size:11px;font-weight:600;opacity:.75}
 .thumbs{display:flex;align-items:center;gap:6px;margin-left:auto;font-weight:700;font-size:13.5px;color:var(--soft)}
@@ -257,6 +259,14 @@ button{font-family:inherit;cursor:pointer}
     </div>
   </div>
 
+  <div class="aud">
+    <span class="audlab">Who are you marketing to?</span>
+    <div class="toggle" role="group" aria-label="Audience" id="audT">
+      <button data-a="b2b">🏢 B2B<small>Selling to businesses</small></button>
+      <button data-a="b2c">🛍️ B2C<small>Selling to consumers</small></button>
+      <button data-a="both" class="on">🔀 Both<small>General answers</small></button>
+    </div>
+  </div>
   <div class="ask">
     <button class="mic" id="mic" aria-label="Ask with your voice">🎤</button>
     <div class="field">
@@ -316,8 +326,8 @@ button{font-family:inherit;cursor:pointer}
   <div class="card bottom hide" id="bottomCard">
     <h3>Bottom line</h3>
     <div class="bl">
-      <div><h4>For Business Leaders</h4><p id="blC"></p></div>
-      <div><h4>For Sales Teams</h4><p id="blS"></p></div>
+      <div><h4 id="blCh">For Business Leaders</h4><p id="blC"></p></div>
+      <div><h4 id="blSh">For Sales Teams</h4><p id="blS"></p></div>
       <div><h4>Paul's Take</h4><p id="blN"></p></div>
     </div>
   </div>
@@ -378,6 +388,8 @@ const CATS = [
   { group: "🤝 Sales & Customers", name: "Customer retention", icon: "❤️", qs: ["Why is keeping a customer cheaper than finding a new one?","What are the early warning signs a customer will leave?","How do loyalty and rewards programs actually work?","What should happen in a customer's first 90 days?","How do you win back a customer who left?"] }
 ];
 let catIdx = 0;
+let audience = 'both';
+try { const sa = localStorage.getItem('mg_aud'); if (['b2b','b2c','both'].includes(sa)) audience = sa; } catch(e) {}
 const CONVO = [];
 
 let lesson = null, busy = false, followUp = "", reqId = 0, lastQuestion = "", figs = [];
@@ -532,16 +544,17 @@ $("q").addEventListener("keydown", e => { if (e.key === "Enter") goAsk(); });
 /* ---------- follow-up box (Ask about this / Go deeper) right under the buttons ---------- */
 let followMode = "", followTitle = "", followPrev = "";
 const WORKING = "⏳ Working on it… Paul is preparing your briefing.";
-function openFollow(mode, title, prev){
+function openFollow(mode, title, prev, quiet){
   const clean = String(title || "").replace(/[?!.]+$/, "");
   followMode = mode; followTitle = title; followPrev = prev;
-  $("fLabel").textContent = mode === "about" ? "What would you like to know about " + clean + "?" : "Which part of " + clean + " should we dig into?";
+  $("fLabel").textContent = mode === "about" ? "Ask your own follow-up question about " + clean + "." : "Which part of " + clean + " should we dig into?";
   $("fq").placeholder = "";
   $("fLabel").textContent += mode === "about" ? " Type your question or tap the mic." : " Type a part, or leave it empty to go deeper on all of it.";
   $("fGo").textContent = mode === "about" ? "Ask" : "Go deeper"; $("fGo").disabled = false;
   $("fq").value = ""; $("fStatus").textContent = "";
   $("askAbout").classList.toggle("on", mode === "about"); $("goDeeper").classList.toggle("on", mode === "more");
   $("followBox").classList.remove("hide");
+  if (quiet) return;
   $("fq").focus({ preventScroll: true });
   try { $("followBox").scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch(e) {}
 }
@@ -575,18 +588,18 @@ function toBoard(){
 const norm = s => s.toLowerCase().replace(/[?!.,]+/g, " ").replace(/\s+/g, " ").trim();
 async function fetchPart(part, question, context, opts){
   let r;
-  if (!context && !opts.more) r = await fetch(`/api/ask?part=${part}&depth=${depth}&v=1&q=${encodeURIComponent(norm(question))}`);
+  if (!context && !opts.more) r = await fetch(`/api/ask?part=${part}&depth=${depth}&aud=${audience}&v=1&q=${encodeURIComponent(norm(question))}`);
   else r = await fetch("/api/ask", { method:"POST", headers:{ "content-type":"application/json" },
-    body: JSON.stringify({ part, question, depth, context: context || "", more: !!opts.more, prev: opts.prev || "" }) });
+    body: JSON.stringify({ part, question, depth, aud: audience, context: context || "", more: !!opts.more, prev: opts.prev || "" }) });
   const d = await r.json().catch(() => null);
   return { ok: r.ok, status: r.status, d };
 }
 // Reads the figures as they stream in: one finished figure per line, shown right away.
 async function streamBoard(question, context, opts, a, onFig){
   let r;
-  if (!context && !opts.more) r = await fetch(`/api/ask?part=board&depth=${depth}&v=1&q=${encodeURIComponent(norm(question))}&a=${encodeURIComponent(a)}`);
+  if (!context && !opts.more) r = await fetch(`/api/ask?part=board&depth=${depth}&aud=${audience}&v=1&q=${encodeURIComponent(norm(question))}&a=${encodeURIComponent(a)}`);
   else r = await fetch("/api/ask", { method:"POST", headers:{ "content-type":"application/json" },
-    body: JSON.stringify({ part: "board", question, depth, context: context || "", more: !!opts.more, prev: opts.prev || "", a }) });
+    body: JSON.stringify({ part: "board", question, depth, aud: audience, context: context || "", more: !!opts.more, prev: opts.prev || "", a }) });
   if (!r.ok) throw new Error("H" + r.status);
   let n = 0, buf = "";
   const handle = line => {
@@ -797,6 +810,7 @@ function render(opts){
     (L.terms || []).forEach(x => { if (!x || !x.word) return; const d = document.createElement("div"); d.innerHTML = "<b></b>: <span></span>"; d.querySelector("b").textContent = x.word; d.querySelector("span").textContent = x.meaning || ""; tb.appendChild(d); });
     if (tb.children.length) { $("termsCard").classList.remove("hide"); $("side").classList.remove("hide"); }
     const bl = L.bottom_line || {};
+    { const lb = blLabels(); $("blCh").textContent = lb[0]; $("blSh").textContent = lb[1]; }
     $("blC").textContent = bl.c_level || ""; $("blS").textContent = bl.sales || ""; $("blN").textContent = bl.nuspark || "";
     $("bottomCard").classList.toggle("hide", !(bl.c_level || bl.sales || bl.nuspark));
     if (L.mistake) { $("myth").textContent = L.mistake; $("mythCard").classList.remove("hide"); $("side").classList.remove("hide"); }
@@ -811,6 +825,7 @@ function render(opts){
     $("goDeeper").onclick = () => { unlock(); openFollow("more", L.title, prevSpeech); };
     $("askAbout").onclick = () => { unlock(); openFollow("about", L.title, prevSpeech); };
     $("deepCard").classList.remove("hide");
+    openFollow("about", L.title, prevSpeech, true);   // the follow-up box is always open: type or tap the mic
   }
   renderCourse();
   if (opts && opts.silent) { $("again").textContent = "🔊 Hear it"; }
@@ -1491,6 +1506,12 @@ async function downloadConvo(){
 }
 $("finishDl").onclick = downloadConvo;
 $("restartBtn").onclick = () => { const so = $("startOver"); if (so) so.click(); };
+
+/* ---------- audience switch ---------- */
+function renderAud(){ document.querySelectorAll('#audT button').forEach(b => b.classList.toggle('on', b.dataset.a === audience)); }
+document.querySelectorAll('#audT button').forEach(b => b.onclick = () => { audience = b.dataset.a; try { localStorage.setItem('mg_aud', audience); } catch(e) {} renderAud(); track('audience', { a: audience }); toast(audience === 'b2b' ? 'Answers framed for B2B' : audience === 'b2c' ? 'Answers framed for consumers (B2C)' : 'General answers for any business'); });
+renderAud();
+function blLabels(){ return audience === 'b2c' ? ['For Business Owners','For Your Front Line','Paul\'s Take'] : audience === 'b2b' ? ['For Business Leaders','For Sales Teams','Paul\'s Take'] : ['For Business Leaders','For Sales & Customer Teams','Paul\'s Take']; }
 
 /* ---------- start ---------- */
 try { if (localStorage.getItem("br_depth") === "full") depth = "full"; } catch(e) {}
