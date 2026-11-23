@@ -84,6 +84,7 @@ THE BRIEFING ("answer"): sections, each with a short "heading" and a "text" para
 OTHER FIELDS (briefings only):
 - "terms": 2-4 key terms, each with a one-sentence plain-English definition.
 - "mistake": one common mistake businesses make and the better way (1-2 sentences), or "".
+- "myth_reality": one popular marketing myth about this topic and the reality: "myth" is the belief in under 14 words (for example "TV is too expensive for small brands"), "reality" is the truth in 1-2 sentences. Well-established facts only; leave both "" if none fits.
 - "bottom_line": three short takeaways, each 1-2 sentences, in Paul's voice:
   - "c_level": for business leaders and owners: what it means for growth, budget and risk.
   - "sales": for sales teams: what it means for leads, conversations and closing.
@@ -154,6 +155,7 @@ const BRIEF_TOOL = {
     answer: { type: "array", items: { type: "object", properties: { heading: { type: "string" }, text: { type: "string" } } } },
     terms: { type: "array", items: { type: "object", properties: { word: { type: "string" }, meaning: { type: "string" } } } },
     mistake: { type: "string" },
+    myth_reality: { type: "object", properties: { myth: { type: "string" }, reality: { type: "string" } } },
     bottom_line: { type: "object", properties: { c_level: { type: "string" }, sales: { type: "string" }, nuspark: { type: "string" } } },
     deeper: { type: "array", items: { type: "string" } }
   }, required: ["type", "title", "answer"] }
@@ -389,7 +391,7 @@ module.exports = async (req, res) => {
   let brief;
   try {
     brief = await withRetry(async () => {
-      const j = normalize(await callTool(SYSTEM_BRIEF, BRIEF_TOOL, user, 3500, x => Array.isArray(x.answer)));
+      const j = normalize(await callTool(SYSTEM_BRIEF, BRIEF_TOOL, user, 4500, x => Array.isArray(x.answer)));
       if (!j) throw new Error("bad_shape");
       return j;
     }, 30000);
@@ -397,7 +399,7 @@ module.exports = async (req, res) => {
     return send(500, { error: "oops", reason: errorCode(e) });
   }
   if (!["briefing", "redirect", "decline"].includes(brief.type)) brief.type = "briefing";
-  if (brief.type !== "briefing") { delete brief.deeper; delete brief.terms; delete brief.mistake; delete brief.bottom_line; }
+  if (brief.type !== "briefing") { delete brief.deeper; delete brief.terms; delete brief.mistake; delete brief.myth_reality; delete brief.bottom_line; }
   brief.booking = BOOKING;
   return send(200, brief, true);
 };

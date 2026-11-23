@@ -319,6 +319,8 @@ button{font-family:inherit;cursor:pointer}
     <div class="side hide" id="side">
       <div class="card terms hide" id="termsCard"><h3>Key terms</h3><div id="terms"></div></div>
       <div class="card myth hide" id="mythCard"><h3>Common mistake</h3><p id="myth"></p></div>
+      <div class="card myth hide" id="mrCard"><h3>Myth vs. Reality</h3><p><b>Myth:</b> <span id="mrM"></span></p><p style="margin-top:6px"><b>Reality:</b> <span id="mrR"></span></p></div>
+      <div class="card terms hide" id="tryBizCard"><h3>Try It on My Business</h3><p style="margin:0 0 8px">Tell the Guru what kind of business you have, and get this topic applied in three steps.</p><p style="margin:0 0 6px;font-size:.85em;opacity:.8">For example: a family dental office, a roofing company, a SaaS startup</p><input id="tryBiz" maxlength="120" autocomplete="off" aria-label="Your type of business" style="width:100%;box-sizing:border-box;padding:9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:inherit;font-size:15px"><button id="tryBizGo" type="button" class="btn" style="margin-top:8px">Apply it to my business</button></div>
       <div class="card cta hide" id="ctaCard"><h3>Want this working for your business?</h3><p>Paul's agency, NuSpark Marketing, builds this for B2B, SaaS, industrial and B2C teams.</p><a id="bookLink" target="_blank" rel="noopener">Visit NuSpark Marketing</a><small>Opens in a new tab.</small></div>
     </div>
   </div>
@@ -712,6 +714,18 @@ function pump(){
   if (shown < groups.length) pumpTimer = setTimeout(pump, 7000);
 }
 
+// Try It on My Business: applies the current topic to the visitor's own kind of business.
+function tryBiz(){
+  const biz = $("tryBiz").value.trim();
+  if (!biz) { $("tryBiz").focus(); return; }
+  if (busy || !lesson) return;
+  unlock(); track("try_biz", { topic: String(lesson.title || "").slice(0, 80) });
+  ask(`Apply "${lesson.title}" to my business: ${biz}. Give me the three most practical steps for a business like mine, with a real example of each.`, lesson.title, { scroll: true });
+  $("tryBiz").value = "";
+}
+$("tryBizGo").onclick = tryBiz;
+$("tryBiz").addEventListener("keydown", e => { if (e.key === "Enter") tryBiz(); });
+
 async function ask(text, context, opts){
   opts = opts || {};
   if (!context && followUp) context = followUp;
@@ -804,7 +818,7 @@ function render(opts){
 
   if (!isLec) { boardOff = true; clearTimeout(pumpTimer); figs = []; buildBoard([{ title: "", caption: L.type === "help" ? "You matter." : "Ask another question.", svg: blankCard() }]); showFigure(0); }
 
-  ["side","termsCard","mythCard","ctaCard","bottomCard","deepCard"].forEach(id => $(id).classList.add("hide"));
+  ["side","termsCard","mythCard","mrCard","tryBizCard","ctaCard","bottomCard","deepCard"].forEach(id => $(id).classList.add("hide"));
   if (isLec) {
     const tb = $("terms"); tb.innerHTML = "";
     (L.terms || []).forEach(x => { if (!x || !x.word) return; const d = document.createElement("div"); d.innerHTML = "<b></b>: <span></span>"; d.querySelector("b").textContent = x.word; d.querySelector("span").textContent = x.meaning || ""; tb.appendChild(d); });
@@ -814,6 +828,9 @@ function render(opts){
     $("blC").textContent = bl.c_level || ""; $("blS").textContent = bl.sales || ""; $("blN").textContent = bl.nuspark || "";
     $("bottomCard").classList.toggle("hide", !(bl.c_level || bl.sales || bl.nuspark));
     if (L.mistake) { $("myth").textContent = L.mistake; $("mythCard").classList.remove("hide"); $("side").classList.remove("hide"); }
+    const mr = L.myth_reality || {};
+    if (mr.myth && mr.reality) { $("mrM").textContent = mr.myth; $("mrR").textContent = mr.reality; $("mrCard").classList.remove("hide"); $("side").classList.remove("hide"); }
+    $("tryBizCard").classList.remove("hide");
     $("ctaCard").classList.remove("hide"); $("side").classList.remove("hide");
 
     const row = $("deeper"); row.innerHTML = "";
