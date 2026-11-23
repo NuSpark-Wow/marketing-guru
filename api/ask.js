@@ -391,7 +391,7 @@ module.exports = async (req, res) => {
   let brief;
   try {
     brief = await withRetry(async () => {
-      const j = normalize(await callTool(SYSTEM_BRIEF, BRIEF_TOOL, user, 3500, x => Array.isArray(x.answer)));
+      const j = normalize(await callTool(SYSTEM_BRIEF, BRIEF_TOOL, user, 4500, x => Array.isArray(x.answer)));
       if (!j) throw new Error("bad_shape");
       return j;
     }, 30000);
